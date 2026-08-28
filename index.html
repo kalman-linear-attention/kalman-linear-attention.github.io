@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalman Linear Attention</title>
+<meta name="description" content="Kalman Linear Attention (KLA): Parallel Bayesian Filtering for Efficient Language Modelling and State Tracking.">
+<!-- Open Graph -->
+<meta property="og:title" content="Kalman Linear Attention">
+<meta property="og:description" content="Parallel Bayesian filtering as a drop-in sequence mixer: non-linear Möbius updates, explicit uncertainty, scan-parallel training.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --paper: #FDFDFB;
+    --ink: #1B1F26;
+    --meta: #5A6572;
+    --accent: #0B5CAD;
+    --accent-ink: #08447F;
+    --border: #E4E2DC;
+    --panel: #F5F5F1;
+    --serif: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", Consolas, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    line-height: 1.65;
+  }
+  .wrap { max-width: 800px; margin: 0 auto; padding: 0 1.25rem 4rem; }
+
+  /* ---------- header ---------- */
+  header { text-align: center; padding: 3.5rem 0 2.25rem; }
+  .venue {
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--meta);
+    margin-bottom: 1.1rem;
+  }
+  h1 {
+    font-size: clamp(1.6rem, 4.5vw, 2.3rem);
+    font-weight: 700;
+    line-height: 1.25;
+    text-wrap: balance;
+    margin-bottom: 1.4rem;
+  }
+  h1 .kla { color: var(--accent); }
+  .tagline {
+    font-style: italic;
+    font-size: 1.08rem;
+    color: var(--accent-ink);
+    margin: -0.6rem 0 1.5rem;
+  }
+  .authors { font-size: 1.02rem; line-height: 1.8; margin-bottom: 0.35rem; }
+  .authors a { color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--meta); }
+  .authors a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  .affil { color: var(--meta); font-style: italic; margin-bottom: 1.6rem; }
+
+  .links { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
+  .links a {
+    font-family: var(--sans);
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--paper);
+    background: var(--ink);
+    border-radius: 2rem;
+    padding: 0.45rem 1.15rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    transition: background 0.15s ease;
+  }
+  .links a:hover { background: var(--accent-ink); }
+  .links a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .links svg { width: 0.95em; height: 0.95em; fill: currentColor; }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 2.75rem; }
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 0.9rem;
+    text-wrap: balance;
+  }
+  h2::after {
+    content: "";
+    display: block;
+    width: 3.5rem;
+    height: 3px;
+    background: var(--accent);
+    margin-top: 0.4rem;
+    border-radius: 2px;
+  }
+  p + p { margin-top: 0.9rem; }
+
+  /* ---------- collapsible abstract ---------- */
+  .abstract summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+  }
+  .abstract summary::-webkit-details-marker { display: none; }
+  .abstract summary h2 { margin-bottom: 0; }
+  .abstract summary h2::after { display: none; }
+  .abstract .hint {
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    color: var(--meta);
+  }
+  .abstract .hint::before { content: "\25B8  "; }
+  .abstract[open] .hint::before { content: "\25BE  "; }
+  .abstract[open] .hint { visibility: hidden; }
+  .abstract[open] summary::after {
+    content: "";
+    display: block;
+    width: 3.5rem;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    position: absolute;
+    margin-top: 2.2rem;
+  }
+  .abstract summary { position: relative; }
+  .abstract p { margin-top: 1rem; }
+  .abstract summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+  /* ---------- figures ---------- */
+  figure { margin: 0; }
+
+  /* ---------- hero carousel ---------- */
+  .carousel {
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    outline: none;
+  }
+  .carousel:focus-visible { box-shadow: 0 0 0 3px var(--accent); }
+  .track {
+    display: flex;
+    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+  .slide { flex: 0 0 100%; min-width: 0; margin: 0; }
+  .slide h3 {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.3;
+    padding: 1.2rem 3.4rem 0;
+    text-wrap: balance;
+  }
+  .slide h3 .hot { color: var(--accent); }
+  .slide img {
+    aspect-ratio: 2.25 / 1;
+    object-fit: contain;
+    padding: 0.6rem 3.4rem 2rem;
+    border: none;
+    border-radius: 0;
+    background: #fff;
+  }
+  .nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--ink);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    opacity: 0.55;
+    transition: opacity 0.15s ease, background 0.15s ease;
+  }
+  .nav svg { width: 1.1rem; height: 1.1rem; }
+  .nav.prev { left: 0.6rem; }
+  .nav.next { right: 0.6rem; }
+  .carousel:hover .nav, .nav:focus-visible { opacity: 1; }
+  .nav:hover { background: #fff; border-color: var(--accent); color: var(--accent); }
+  .nav:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dots {
+    position: absolute;
+    left: 0; right: 0; bottom: 0.7rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .dots button {
+    width: 0.55rem;
+    height: 0.55rem;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+  .dots button[aria-selected="true"] { background: var(--accent); transform: scale(1.25); }
+  .dots button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (max-width: 640px) {
+    .slide h3 { font-size: 1.05rem; padding: 0.9rem 2.4rem 0; }
+    .slide img { padding: 0.4rem 2.6rem 1.8rem; }
+    .nav { top: 50%; width: 2rem; height: 2rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .track { transition: none; }
+  }
+  .teaser { display: grid; grid-template-columns: 1.05fr 1fr; gap: 1rem; align-items: center; }
+  @media (max-width: 640px) { .teaser { grid-template-columns: 1fr; } }
+  figure img {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  figcaption {
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    color: var(--meta);
+    line-height: 1.55;
+    margin-top: 0.7rem;
+  }
+  figcaption b { color: var(--ink); }
+  .figrow { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: center; }
+  .figrow.a5 { grid-template-columns: 1.25fr 1fr; }
+  .figrow.gpt { grid-template-columns: 1.1fr 1fr; }
+  @media (max-width: 640px) { .figrow, .figrow.a5, .figrow.gpt { grid-template-columns: 1fr; } }
+  .row + .row { margin-top: 2.4rem; }
+  .question {
+    font-style: italic;
+    font-size: 1.15rem;
+    color: var(--accent-ink);
+    margin: -0.2rem 0 1.6rem;
+  }
+  .row h3 {
+    font-size: 1.08rem;
+    font-weight: 700;
+    text-align: center;
+    text-wrap: balance;
+    margin-bottom: 0.9rem;
+  }
+  .row h3 .hot { color: var(--accent); }
+  .figtext { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem; align-items: center; }
+  .figtext .note { margin: 0; font-size: 0.97rem; }
+  .figtext + .figtext { margin-top: 1.25rem; }
+  .figtext.wide { grid-template-columns: 1.6fr 1fr; }
+  @media (max-width: 640px) { .figtext, .figtext.wide { grid-template-columns: 1fr; } .figtext .note { margin-top: 0.6rem; } }
+  .row .note { margin: 1.1rem auto 0; max-width: 42rem; }
+  .figrow figure h4 {
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--meta);
+    text-align: center;
+    text-wrap: balance;
+    margin-bottom: 0.5rem;
+    min-height: 2.4em;
+  }
+  .figrow.gpt { align-items: start; }
+
+  /* ---------- highlights ---------- */
+  .highlights { list-style: none; display: grid; gap: 0.85rem; }
+  .highlights li {
+    padding-left: 1.4rem;
+    position: relative;
+  }
+  .highlights li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.52em;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .highlights b { color: var(--accent-ink); }
+
+  /* ---------- bibtex ---------- */
+  .bibtex {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.1rem 1.2rem;
+    overflow-x: auto;
+  }
+  .bibtex pre {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    white-space: pre;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    font-family: var(--sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--meta);
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+  }
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  footer {
+    margin-top: 3.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    color: var(--meta);
+    text-align: center;
+  }
+  footer a { color: var(--meta); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="venue">ICML 2026 · International Conference on Machine Learning</div>
+    <h1><span class="kla">Kalman Linear Attention</span>: Parallel Bayesian Filtering for Efficient Language Modelling and State&nbsp;Tracking</h1>
+    <p class="tagline">&ldquo;Towards probabilistic LLMs - one Bayesian layer at a time&rdquo;</p>
+    <p class="authors">
+      Vaisakh Shaj · Cameron Barker · Aidan Scannell · Andras Szecsenyi · Elliot J. Crowley · Amos Storkey
+    </p>
+    <p class="affil">University of Edinburgh, United Kingdom</p>
+    <nav class="links" aria-label="Paper resources">
+      <a href="https://arxiv.org/abs/2602.10743">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+        arXiv
+      </a>
+      <a href="https://arxiv.org/pdf/2602.10743">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+        PDF
+      </a>
+      <a href="https://openreview.net/forum?id=9h7sSJe4jN">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 11.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zm0-7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>
+        OpenReview
+      </a>
+      <a href="static/kla_poster_icml2026.pdf">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-6v2h3v2H7v-2h3v-2H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm1 2v10h14V5H5z"/></svg>
+        Poster
+      </a>
+      <a href="https://github.com/vaisakh-shaj/kalman-linear-attention">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-1.97c-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11.06 11.06 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.68.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>
+        Code
+      </a>
+      <a href="#bibtex">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 5.6L4.2 12l5.4 6.4-1.5 1.3L1.5 12l6.6-7.7 1.5 1.3zm4.8 0l1.5-1.3L22.5 12l-6.6 7.7-1.5-1.3 5.4-6.4-5.4-6.4z"/></svg>
+        BibTeX
+      </a>
+    </nav>
+  </header>
+
+  <div class="carousel" id="hero" tabindex="0" aria-roledescription="carousel" aria-label="Key figures">
+    <div class="track">
+      <figure class="slide">
+        <h3>Kalman Filters Are Secretly Attention Mechanisms</h3>
+        <img src="static/kla_attention_block.png" alt="A learned KLA attention pattern on Selective Copy (sparse vertical bands) shown as the attention view of one KLA block: Linear, Conv1D, SiLU, Linear, Kalman Filter, gated by a SiLU branch, then Linear.">
+      </figure>
+      <figure class="slide">
+        <h3>Exact Bayesian Inference, Trained in Parallel - <span class="hot">350&times; Faster</span></h3>
+        <img src="static/kla_cuda_benchmark.png" alt="Forward plus backward pass wall-clock time versus sequence length for KLA Recurrent, Torch Scan, Triton Scan and CUDA Scan on an A100 80GB; the CUDA scan is about 350 times faster than the recurrent version at 2048 tokens, where the recurrent and Torch scan run out of memory.">
+      </figure>
+      <!-- To add a slide: copy one <figure class="slide"> block above. Dots and timing update automatically. -->
+    </div>
+    <button class="nav prev" type="button" aria-label="Previous figure">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l-8 8 8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="nav next" type="button" aria-label="Next figure">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="dots" role="tablist" aria-label="Choose figure"></div>
+  </div>
+
+  <section>
+    <h2>Lay summary</h2>
+    <p>
+      The AI systems behind today's chatbots, called transformers, are powerful but grow slow and resource-hungry as the text they handle gets longer. Researchers have built leaner, faster alternatives, but these often struggle to keep careful track of information across long passages - a skill that genuine reasoning needs.
+    </p>
+    <p>
+      We turned to an unlikely source: the Kalman filter, a 60-year-old algorithm that estimates the hidden state of a system from noisy measurements while keeping track of its own uncertainty. It famously helped guide the Apollo missions to the Moon and remains a gold standard in engineering and neuroscience. The catch was that it seemed to work only one step at a time - far too slowly to learn from the vast text collections modern AI needs. We found that rewriting the filter in a different mathematical form reveals hidden structure that lets all its steps be computed at once, in parallel, and built this into a neural network layer we call Kalman Linear Attention.
+    </p>
+    <p>
+      Because the model continually reasons about its own uncertainty, useful behaviours that other systems bolt on by hand emerge on their own. It matches or improves on leading efficient models for language, and is among the first such probabilistic methods trained at large scale - a step toward AI that has a built-in sense of what it doesn't know.
+    </p>
+  </section>
+
+  <section>
+    <details class="abstract">
+      <summary><h2>Abstract</h2><span class="hint">click to expand</span></summary>
+      <p>
+        State-space language models such as Mamba and gated linear attention (GLA) offer linear-complexity, parallelisable alternatives to transformers, but often lack the expressivity and robust state-tracking needed for complex reasoning. We address this by reframing sequence modeling through a probabilistic lens, with Bayesian filters as the core primitive. Classical Kalman filters provide principled state and uncertainty estimation but are typically viewed as inherently sequential. We show that reparameterising the Kalman filter in information form casts its updates as an associative scan, enabling efficient parallel training. The resulting Kalman Linear Attention (KLA) layer performs time-parallel probabilistic inference while maintaining explicit belief-state uncertainty, offering strictly more expressive nonlinear updates and gating than GLA variants while retaining their computational advantages. On language modeling tasks, KLA matches or outperforms modern SSMs and GLAs on discrete token-manipulation, state-tracking, and zero-shot commonsense-reasoning benchmarks, and is among the first stacked Bayesian-filtering primitives pretrained at the billion-token scale.
+      </p>
+    </details>
+  </section>
+
+  <section>
+    <h2>Highlights</h2>
+    <ul class="highlights">
+      <li><b>Kalman filtering as an associative scan.</b> Reparameterising the Kalman filter in information form makes its non-linear (Möbius) per-token update temporally parallel - exact Bayesian filtering at SSM cost.</li>
+      <li><b>Strictly more expressive than GLA.</b> KLA's recurrence is fractional-linear (M&ouml;bius) rather than linear, unlike other linear RNNs - and we show it still admits a parallel representation.</li>
+      <li><b>Uncertainty built in.</b> Every belief state carries an explicit posterior variance, giving calibrated sequence-level uncertainty for free.</li>
+      <li><b>Drop-in probabilistic sequence mixer at scale.</b> Custom Triton/CUDA kernels; among the first stacked Bayesian-filtering primitives trained at the billion-token scale.</li>
+    </ul>
+  </section>
+
+  <section id="why">
+    <h2>Experiments</h2>
+    <p class="question">Why should I use a Bayesian Filter for Language Modelling?</p>
+
+    <div class="row">
+      <h3>Interpretable in-context learning through explicit <span class="hot">uncertainty neurons</span></h3>
+      <div class="figtext">
+        <figure>
+        <img src="static/why_variance.png" alt="Posterior variance of every state dimension over a Selective Copy sequence, with the mean and one standard deviation plotted below; variance spikes at the tokens to be copied and decays as more tokens are observed.">
+        </figure>
+        <p class="note">
+        While solving Selective Copying - the synthetic recall task popularised by Mamba (Gu &amp; Dao, 2023) - KLA additionally gives us interpretable posterior uncertainty <em>by construction</em>, exposed as explicit uncertainty neurons. Clear patterns emerge: uncertainty spikes exactly when a useful &ldquo;gold&rdquo; token to be copied arrives, and in general it decays as more tokens are observed and the belief state sharpens.
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <h3>Non-linear + parallel recurrence = <span class="hot">state-tracking</span> models that scale</h3>
+      <div class="figtext">
+        <figure><img src="static/why_a5_task.png" alt="The A5 task: five objects A to E in five slots are shuffled by a sequence of swap actions a1, a2, a3; the model must report the arrangement after each action."></figure>
+        <p class="note">
+          A<sub>5</sub> is a proxy for state tracking, popularised by Merrill et al. (2024). Intuitively it is a world-modelling problem in miniature: the world state is an arrangement of five objects, every action is a swap, and the task is to predict the world state after <em>k</em> actions have been applied.
+        </p>
+      </div>
+      <div class="figtext">
+        <figure><img src="static/why_a5_results.png" alt="Minimum number of blocks required to reach 90 percent accuracy on A5 versus sequence length: Mamba and Transformer grow to four blocks, Kalman Linear Attention stays at two, an RNN stays at one."></figure>
+        <p class="note">
+          Sequence length counts the number of swaps (&ldquo;actions&rdquo;), so the task gets harder as the horizon grows. KLA solves it at a constant depth of 1-2 blocks, whereas popular sequence models need depth that grows in proportion to the difficulty.
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <h3>Generative pretrained KLA is a <span class="hot">competitive probabilistic LLM</span></h3>
+      <div class="figtext wide">
+        <figure><img src="static/why_gpt_table.png" alt="Zero-shot accuracy table at 45M and 180M parameters across LAMBADA, HellaSwag, PIQA, ARC-E, ARC-C, WinoGrande, OBQA and BoolQ for GPT, Mamba, GDN, KLA and the GPT plus KLA hybrid; GPT plus KLA has the best average at both sizes (38.33 and 44.95)."></figure>
+        <p class="note">
+          We stacked KLA blocks into deep networks (up to 24 layers) and pretrained them from scratch on FineWeb-Edu at 45M and 180M parameters, on up to ~11 billion tokens - to our knowledge the first large-scale pretraining of a stacked Bayesian-filtering primitive. As a standalone mixer, KLA matches or outperforms softmax attention, Mamba and GDN on zero-shot commonsense benchmarks.
+        </p>
+      </div>
+      <div class="figtext">
+        <figure><img src="static/why_gpt_bars.png" alt="Average downstream accuracy versus model size for pure GPT, GPT plus Mamba, GPT plus GDN and GPT plus KLA; GPT plus KLA is highest at 45M (38.33) and 180M (44.95)."></figure>
+        <p class="note">
+          Finally, we built a minimal <em>hybrid</em>: a GPT whose last attention layer is replaced by a single KLA block, again pretrained from scratch. That one layer keeps recall and improves zero-shot reasoning across the board - more than the analogous Mamba or GDN layer. KLA complements the transformer's sequence-modelling capabilities rather than merely substituting for them.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="bibtex">
+    <h2>Citation</h2>
+    <div class="bibtex">
+      <button class="copy-btn" onclick="copyBib(this)">Copy</button>
+      <pre id="bib">@inproceedings{shaj2026kalman,
+  title   = {Kalman Linear Attention: Parallel Bayesian Filtering for
+             Efficient Language Modelling and State Tracking},
+  author  = {Shaj, Vaisakh and Barker, Cameron and Scannell, Aidan and
+             Szecsenyi, Andras and Crowley, Elliot J. and Storkey, Amos},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year    = {2026}
+}</pre>
+    </div>
+  </section>
+
+  <footer>
+    <p>Correspondence: <a href="mailto:vaisakhs.shaj@gmail.com">Vaisakh Shaj</a> · University of Edinburgh</p>
+  </footer>
+
+</div>
+<script>
+(function () {
+  var root = document.getElementById('hero');
+  if (!root) return;
+  var track = root.querySelector('.track');
+  var slides = Array.prototype.slice.call(track.children).filter(function (el) { return el.tagName === 'FIGURE'; });
+  var dotsBox = root.querySelector('.dots');
+  var n = slides.length, i = 0, timer = null;
+  var INTERVAL = 3000;
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  slides.forEach(function (sl, k) {
+    var d = document.createElement('button');
+    d.type = 'button';
+    d.setAttribute('role', 'tab');
+    d.setAttribute('aria-label', 'Figure ' + (k + 1) + ' of ' + n);
+    d.addEventListener('click', function () { go(k); restart(); });
+    dotsBox.appendChild(d);
+  });
+  var dots = Array.prototype.slice.call(dotsBox.children);
+
+  function go(k) {
+    i = (k + n) % n;
+    track.style.transform = 'translateX(' + (-i * 100) + '%)';
+    dots.forEach(function (d, k2) { d.setAttribute('aria-selected', k2 === i ? 'true' : 'false'); });
+    slides.forEach(function (sl, k2) { sl.setAttribute('aria-hidden', k2 === i ? 'false' : 'true'); });
+  }
+  function start() { if (!reduced && n > 1 && !timer) timer = setInterval(function () { go(i + 1); }, INTERVAL); }
+  function stop() { clearInterval(timer); timer = null; }
+  function restart() { stop(); start(); }
+
+  root.querySelector('.nav.prev').addEventListener('click', function () { go(i - 1); restart(); });
+  root.querySelector('.nav.next').addEventListener('click', function () { go(i + 1); restart(); });
+  root.addEventListener('mouseenter', stop);
+  root.addEventListener('mouseleave', start);
+  root.addEventListener('focusin', stop);
+  root.addEventListener('focusout', start);
+  root.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft') { go(i - 1); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { go(i + 1); e.preventDefault(); }
+  });
+  // touch / pointer swipe
+  var x0 = null;
+  root.addEventListener('pointerdown', function (e) { x0 = e.clientX; });
+  root.addEventListener('pointerup', function (e) {
+    if (x0 === null) return;
+    var dx = e.clientX - x0; x0 = null;
+    if (Math.abs(dx) > 40) { go(dx < 0 ? i + 1 : i - 1); restart(); }
+  });
+  document.addEventListener('visibilitychange', function () { document.hidden ? stop() : start(); });
+
+  go(0); start();
+})();
+
+function copyBib(btn) {
+  navigator.clipboard.writeText(document.getElementById('bib').textContent).then(function () {
+    btn.textContent = 'Copied';
+    setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+  });
+}
+</script>
+</body>
+</html>
