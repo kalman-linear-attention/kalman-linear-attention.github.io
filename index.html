@@ -9,6 +9,17 @@
 <meta property="og:title" content="Kalman Linear Attention">
 <meta property="og:description" content="Parallel Bayesian filtering as a drop-in sequence mixer: non-linear Möbius updates, explicit uncertainty, scan-parallel training.">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://kalman-linear-attention.github.io/">
+<meta property="og:image" content="https://kalman-linear-attention.github.io/static/og_card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Kalman Linear Attention">
+<meta name="twitter:description" content="Parallel Bayesian filtering as a drop-in sequence mixer: non-linear Möbius updates, explicit uncertainty, scan-parallel training. ICML 2026.">
+<meta name="twitter:image" content="https://kalman-linear-attention.github.io/static/og_card.png">
+<link rel="canonical" href="https://kalman-linear-attention.github.io/">
+<link rel="icon" type="image/png" sizes="64x64" href="static/favicon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="static/apple-touch-icon.png">
 <style>
   :root {
     --paper: #FDFDFB;
@@ -57,7 +68,8 @@
     color: var(--accent-ink);
     margin: -0.6rem 0 1.5rem;
   }
-  .authors { font-size: 1.02rem; line-height: 1.8; margin-bottom: 0.35rem; }
+  .authors { font-size: 0.95rem; line-height: 1.8; margin-bottom: 0.35rem; }
+  .authors .au { white-space: nowrap; }
   .authors a { color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--meta); }
   .authors a:hover { color: var(--accent); border-bottom-color: var(--accent); }
   .affil { color: var(--meta); font-style: italic; margin-bottom: 1.6rem; }
@@ -343,7 +355,7 @@
     <h1><span class="kla">Kalman Linear Attention</span>: Parallel Bayesian Filtering for Efficient Language Modelling and State&nbsp;Tracking</h1>
     <p class="tagline">&ldquo;Towards probabilistic LLMs - one Bayesian layer at a time&rdquo;</p>
     <p class="authors">
-      Vaisakh Shaj · Cameron Barker · Aidan Scannell · Andras Szecsenyi · Elliot J. Crowley · Amos Storkey
+      <span class="au">Vaisakh Shaj</span> · <span class="au">Cameron Barker</span> · <span class="au">Aidan Scannell</span> · <span class="au">András Szécsényi</span> · <span class="au">Elliot J. Crowley</span> · <span class="au">Amos Storkey</span>
     </p>
     <p class="affil">University of Edinburgh, United Kingdom</p>
     <nav class="links" aria-label="Paper resources">
@@ -435,7 +447,7 @@
       <h3>Interpretable in-context learning through explicit <span class="hot">uncertainty neurons</span></h3>
       <div class="figtext">
         <figure>
-        <img src="static/why_variance.png" alt="Posterior variance of every state dimension over a Selective Copy sequence, with the mean and one standard deviation plotted below; variance spikes at the tokens to be copied and decays as more tokens are observed.">
+        <img src="static/why_variance.png" alt="Posterior variance of every state dimension over a Selective Copy sequence, with the mean and one standard deviation plotted below; variance spikes at the tokens to be copied and the belief sharpens as more informative tokens arrive.">
         </figure>
         <p class="note">
         While solving Selective Copying - the synthetic recall task popularised by Mamba (Gu &amp; Dao, 2023) - KLA additionally gives us interpretable posterior uncertainty <em>by construction</em>, exposed as explicit uncertainty neurons. Clear patterns emerge: uncertainty spikes exactly when a useful &ldquo;gold&rdquo; token to be copied arrives, and in general as the context sees more informative tokens the belief sharpens.
@@ -484,7 +496,7 @@
   title   = {Kalman Linear Attention: Parallel Bayesian Filtering for
              Efficient Language Modelling and State Tracking},
   author  = {Shaj, Vaisakh and Barker, Cameron and Scannell, Aidan and
-             Szecsenyi, Andras and Crowley, Elliot J. and Storkey, Amos},
+             Sz{\'e}cs{\'e}nyi, Andr{\'a}s and Crowley, Elliot J. and Storkey, Amos},
   booktitle = {International Conference on Machine Learning (ICML)},
   year    = {2026}
 }</pre>
