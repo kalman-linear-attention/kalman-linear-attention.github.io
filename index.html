@@ -464,7 +464,7 @@
       <div class="figtext wide">
         <figure><img src="static/why_gpt_table.png" alt="Zero-shot accuracy table at 45M and 180M parameters across LAMBADA, HellaSwag, PIQA, ARC-E, ARC-C, WinoGrande, OBQA and BoolQ for GPT, Mamba, GDN, KLA and the GPT plus KLA hybrid; GPT plus KLA has the best average at both sizes (38.33 and 44.95)."></figure>
         <p class="note">
-          We stacked KLA blocks into deep networks (up to 24 layers) and pretrained them from scratch on FineWeb-Edu at 45M and 180M parameters, on up to ~11 billion tokens - to our knowledge the first large-scale pretraining of a stacked Bayesian-filtering primitive. As a standalone mixer, KLA matches or outperforms softmax attention, Mamba and GDN on zero-shot commonsense benchmarks.
+          We stacked KLA blocks up to 24 deep - training stayed stable - and pretrained from scratch on FineWeb-Edu at 45M and 180M parameters (up to ~11B tokens). As far as we know, no stacked Bayesian filter has been trained at this scale before. Used standalone, KLA matches or beats softmax attention, Mamba and GDN on zero-shot commonsense benchmarks.
         </p>
       </div>
       <div class="figtext">
