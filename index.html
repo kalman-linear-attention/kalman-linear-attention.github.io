@@ -482,7 +482,7 @@
       <div class="figtext">
         <figure><img src="static/why_gpt_bars.png" alt="Average downstream accuracy versus model size for pure GPT, GPT plus Mamba, GPT plus GDN and GPT plus KLA; GPT plus KLA is highest at 45M (38.33) and 180M (44.95)."></figure>
         <p class="note">
-          Finally, a minimal <em>hybrid</em>: a GPT with its last attention layer swapped for one KLA block, again pretrained from scratch. That single layer keeps recall and lifts zero-shot reasoning across the board - more than the equivalent Mamba or GDN layer. KLA complements attention rather than merely replacing it.
+          Finally, we set up a minimal <em>hybrid</em> LM (a quadratic + subquadratic mix): a GPT trained from scratch, but with its last layer swapped for a single KLA layer. That one-layer addition lifts zero-shot accuracy across benchmarks - and by more than the equivalent Mamba or GDN layer. KLA complements attention rather than merely replacing it.
         </p>
       </div>
     </div>
